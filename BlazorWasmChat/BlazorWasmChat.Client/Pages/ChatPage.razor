@@ -1,0 +1,72 @@
+﻿@page "/Chat"
+@using Microsoft.AspNetCore.SignalR.Client
+@rendermode InteractiveWebAssembly
+@inject NavigationManager NavManager
+
+<PageTitle>Chat</PageTitle>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card"> 
+            <div class="card-header">Chat</div>
+
+            <div class="card-body">
+                <ul class="list-group">
+                    @foreach (var message in _messages)
+                    {
+                        <li class="mb-2">@message</li>
+                    }
+                </ul>
+                <div class="border-primary">
+                    <div class="hstack gap-2 mb-4">
+                        <input type="text" class="form-control w-25" @bind="_userName" />
+                        <textarea class="form-control" @bind="Message" />
+                    </div>
+                    <button class="btn btn-success" @onclick="Send">Send Message</button>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                @if (!_isConnected)
+                {
+                    <div class="alert alert-danger">Chat Disconnected></div>
+                }
+                else
+                {
+                    <div class="alert alert-success">Chat Connected</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private HubConnection? _hubConnection;
+    private List<string> _messages = [];
+
+    private string? _userName;
+    public string? Message;
+    private DateTime _date = DateTime.Now;
+
+    protected async override Task OnInitializedAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavManager.ToAbsoluteUri("/ChatHub"))
+            .Build();
+
+        _hubConnection.On<string, string, DateTime>("ReceiveMessage", (_userName, Message, _date) =>
+        {
+            var contactMessage = $"{_date}{Environment.NewLine}{_userName}{Environment.NewLine}{Message}";
+            _messages.Add(contactMessage);
+            InvokeAsync(() => StateHasChanged());
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private bool _isConnected =>
+        _hubConnection!.State == HubConnectionState.Connected;
+
+    Task Send() =>
+        _hubConnection!.SendAsync("SendMessage", _userName, Message, _date);
+}
