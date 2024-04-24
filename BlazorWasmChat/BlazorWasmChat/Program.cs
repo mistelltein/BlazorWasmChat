@@ -1,5 +1,5 @@
 using BlazorWasmChat.ChatHubs;
-using BlazorWasmChat.Client.Pages;
+using BlazorWasmChat.Client.ChatServices;
 using BlazorWasmChat.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +8,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddSignalR();
+builder.Services.AddScoped<ChatService>();
 
 var app = builder.Build();
 

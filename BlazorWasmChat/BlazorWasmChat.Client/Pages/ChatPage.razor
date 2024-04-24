@@ -1,7 +1,9 @@
 ﻿@page "/Chat"
+@using BlazorWasmChat.Client.ChatServices
+@using ChatModels
 @using Microsoft.AspNetCore.SignalR.Client
 @rendermode InteractiveWebAssembly
-@inject NavigationManager NavManager
+@inject ChatService _chatService
 
 <PageTitle>Chat</PageTitle>
 
@@ -12,22 +14,34 @@
 
             <div class="card-body">
                 <ul class="list-group">
-                    @foreach (var message in _messages)
+                    @foreach (var chat in _chatService.Chats)
                     {
-                        <li class="mb-2">@message</li>
+                        <li class="list-group-item mb-2">
+                            @chat.DateTime.Date.ToString("dd/MM/yy");
+                            <br />
+                            <span class="fw-bold">@chat.UserName:</span>
+                            <br />
+                            @chat.Message
+                        </li>
                     }
                 </ul>
-                <div class="border-primary">
-                    <div class="hstack gap-2 mb-4">
-                        <input type="text" class="form-control w-25" @bind="_userName" />
-                        <textarea class="form-control" @bind="Message" />
-                    </div>
-                    <button class="btn btn-success" @onclick="Send">Send Message</button>
+                
+                <div class="mt-3">
+
+                    <EditForm Model="_chat" OnValidSubmit="SendMessageClicked">
+                        <DataAnnotationsValidator />
+                        <div class="vstack gap-1">
+                            <InputText @bind-Value="_chat.UserName" class="form-control w-25" placeholder="Username" />
+                            <InputTextArea @bind-Value="_chat.Message" class="form-control" placeholder="Message" />
+                        </div>
+                        <button class="float-end btn btn-success mt-3" type="submit">Send</button>
+                    </EditForm>
+
                 </div>
             </div>
 
-            <div class="card-footer">
-                @if (!_isConnected)
+            <div class="card-footer fw-bold">
+                @if (!_chatService.IsConnected)
                 {
                     <div class="alert alert-danger">Chat Disconnected></div>
                 }
@@ -41,32 +55,19 @@
 </div>
 
 @code {
-    private HubConnection? _hubConnection;
-    private List<string> _messages = [];
+    public static string? StoredUserName { get; set; }
+    private Chat _chat = new();
 
-    private string? _userName;
-    public string? Message;
-    private DateTime _date = DateTime.Now;
-
-    protected async override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavManager.ToAbsoluteUri("/ChatHub"))
-            .Build();
-
-        _hubConnection.On<string, string, DateTime>("ReceiveMessage", (_userName, Message, _date) =>
-        {
-            var contactMessage = $"{_date}{Environment.NewLine}{_userName}{Environment.NewLine}{Message}";
-            _messages.Add(contactMessage);
-            InvokeAsync(() => StateHasChanged());
-        });
-
-        await _hubConnection.StartAsync();
+        _chatService.InvokeChatDisplay += StateHasChanged;
+        await _chatService.StartConnectionAsync();
+        _chatService.ReceiveMessage();
     }
 
-    private bool _isConnected =>
-        _hubConnection!.State == HubConnectionState.Connected;
+    async void SendMessageClicked() =>
+        await _chatService.SendChat(_chat);
 
-    Task Send() =>
-        _hubConnection!.SendAsync("SendMessage", _userName, Message, _date);
+    public void Dispose() =>
+        _chatService.InvokeChatDisplay -= StateHasChanged;
 }
