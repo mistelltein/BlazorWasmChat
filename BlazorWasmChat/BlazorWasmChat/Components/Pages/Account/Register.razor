@@ -1,0 +1,95 @@
+﻿@page "/Account/Register"
+
+<h3>Register</h3>
+<div class="row">
+    <div class="col-md-4">
+        @(Message != "" ? Message : "")
+        <EditForm Model="registerModel" OnValidSubmit="RegisterAsync" FormName="register">
+            <DataAnnotationsValidator />
+            <h2>Create a new account</h2>
+            <hr />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="registerModel.Fullname" name="FullName" class="form-control" autocomplete="name"
+                    aria-required="true" aria-describedby="FullName-desc" placeholder="Enter your full name" />
+                <label for="name">Full Name</label>
+                <ValidationMessage For="() => registerModel.Fullname" class="text-danger" title="Please enter your full name" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="registerModel.Email" name="Email" class="form-control" autocomplete="email"
+                    aria-required="true" aria-describedby="Email-desc" placeholder="Enter your email" />
+                <label for="email">Email</label>
+                <ValidationMessage For="() => registerModel.Email" class="text-danger" title="Please enter your email" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="registerModel.UserName" name="UserName" class="form-control" autocomplete="username"
+                           aria-required="true" aria-describedby="UserName-desc" placeholder="Enter your username" />
+                <label for="username">Username</label>
+                <ValidationMessage For="() => registerModel.UserName" class="text-danger" title="Please enter your username" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText type="password" @bind-Value="registerModel.Password" name="Password" class="form-control"
+                           autocomplete="new-password" aria-required="true" aria-describedby="Password-desc" placholder="Enter your password" />
+                <label for="password">Password</label>
+                <ValidationMessage For="() => registerModel.Password" class="text-danger" title="Please enter your password" />
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText type="password" @bind-Value="registerModel.ConfirmPassword" name="ConfirmPassword" class="form-control"
+                           autocomplet="new-password" aria-required="true" aria-describedby="ConfirmPassword-desc" placeholder="Enter your password again" />
+                <label for="confirm-password">Confirm Password</label>
+                <ValidationMessage For="() => registerModel.ConfirmPassword" class="text-danger" title="Please confirm your password" />
+            </div>
+
+            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    string Message = "";
+
+    [SupplyParameterFromForm]
+    RegisterModel registerModel { get; set; } = new();
+
+    async Task RegisterAsync()
+    {
+        var appUser = new AppUser()
+        {
+            Fullname = registerModel.Fullname,
+            Email = registerModel.Email,
+            PasswordHash = registerModel.Password,
+            UserName = registerModel.UserName
+        };
+
+        var result = await userManager.CreateAsync(appUser, registerModel.Password!);
+
+        if (!result.Succeeded)
+        {
+            Message = "Error occured whiles crating an account";
+        }
+        NavManager.NavigateTo("Account/Login");
+    }
+
+    public class RegisterModel
+    {
+        [Required]
+        public string? Fullname { get; set; } = string.Empty;
+
+        [Required]
+        public string? Email { get; set; } = string.Empty;
+
+        [Required]
+        public string? UserName { get; set; } = string.Empty;
+
+        [Required]
+        public string? Password { get; set; } = string.Empty;
+
+        [Compare(nameof(Password)), Required]
+        public string? ConfirmPassword { get; set; } = string.Empty;
+    }
+}
